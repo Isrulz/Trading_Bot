@@ -2,27 +2,24 @@ import logging
 import os
 
 def setup_logger():
-    """
-    Creates a dual-output logging system.
-    """
-    os.makedirs('logs', exist_ok=True)
-    logger = logging.getLogger("TradingBot")
-    logger.setLevel(logging.INFO)
+    # Create a logs folder if it doesn't exist
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+
+    logging.basicConfig(
+        filename='logs/bot_activity.log',
+        level=logging.INFO,
+        format='%(asctime)s - [%(levelname)s] - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
     
-    if not logger.handlers:
-        # 1. File Handler (Saves detailed records to logs/bot.log)
-        file_handler = logging.FileHandler("logs/bot.log")
-        file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        file_handler.setFormatter(file_formatter)
-        logger.addHandler(file_handler)
-        
-        # 2. Console Handler (Prints a cleaner version to your terminal screen)
-        console_handler = logging.StreamHandler()
-        console_formatter = logging.Formatter('%(levelname)s: %(message)s')
-        console_handler.setFormatter(console_formatter)
-        logger.addHandler(console_handler)
+    # Also print to the terminal
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    logging.getLogger('').addHandler(console)
 
-    return logger
+    return logging.getLogger(__name__)
 
-# Initialize it once so other files can just import 'log'
-log = setup_logger()
+# Usage: log = setup_logger()
+# log.info("Trade executed successfully.")
+# log.error("Connection to broker lost.")
