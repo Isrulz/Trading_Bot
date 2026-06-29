@@ -58,3 +58,52 @@ def shutdown_connection():
     """
     mt5.shutdown()
     print("MT5 connection closed.")
+
+def download_and_save_historical_data(symbol, timeframe, num_bars, filename):
+    """
+    Fetches historical data and saves it to a local CSV file for backtesting.
+    """
+    print(f"Downloading {num_bars} bars for {symbol}...")
+    df = get_historical_bars(symbol, timeframe, num_bars)
+    
+    if df is not None and not df.empty:
+        df.to_csv(filename, index=False)
+        print(f"Successfully saved {len(df)} rows to {filename}")
+        return True
+    
+    print("Failed to download historical data.")
+    return False
+
+def load_historical_data(filename):
+    """
+    Loads historical data from a CSV file into a Pandas DataFrame.
+    """
+    try:
+        df = pd.read_csv(filename)
+        df['time'] = pd.to_datetime(df['time'])
+        print(f"Loaded {len(df)} rows from {filename}")
+        return df
+    except Exception as e:
+        print(f"Error loading historical data from {filename}: {e}")
+        return None
+
+def get_auto_cached_historical_data(symbol, timeframe, num_bars, filename):
+    """
+    Checks if a local CSV exists. If yes, loads it. 
+    If no, connects to MT5, downloads the data, saves it, and then loads it.
+    """
+    import os
+    if os.path.exists(filename):
+        print(f"Auto-Cache Hit: Found local dataset '{filename}'. Bypassing MT5 API.")
+        return load_historical_data(filename)
+    else:
+        print(f"Auto-Cache Miss: '{filename}' not found. Fetching from MT5...")
+        # Ensure connection
+        if not mt5.terminal_info():
+            if not init_connection():
+                return None
+        
+        success = download_and_save_historical_data(symbol, timeframe, num_bars, filename)
+        if success:
+            return load_historical_data(filename)
+        return None
