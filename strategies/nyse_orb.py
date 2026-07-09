@@ -15,11 +15,13 @@ def generate_signals(df, **kwargs):
     All positions are squared off before the NYSE market close.
     """
     # --- Strategy Parameters ---
-    orb_lookback_minutes = kwargs.get('orb_lookback_minutes', 15)  # Duration of the opening range
-    min_atr_mult = kwargs.get('min_atr_mult', 0.5)                  # Min opening range height relative to ATR
+    orb_lookback_minutes = kwargs.get('orb_lookback_minutes', 30)  # Duration of the opening range
+    min_atr_mult = kwargs.get('min_atr_mult', 0.3)                  # Min opening range height relative to ATR
     max_atr_mult = kwargs.get('max_atr_mult', 2.5)                  # Max opening range height relative to ATR
     use_volume_filter = kwargs.get('use_volume_filter', True)       # Toggle volume filter
     use_rsi_filter = kwargs.get('use_rsi_filter', True)             # Toggle RSI momentum filter
+    use_trend_filter = kwargs.get('use_trend_filter', False)        # Toggle trend filter
+    trend_filter_period = kwargs.get('trend_filter_period', 200)    # Trend filter EMA period
     vol_ma_mult = kwargs.get('vol_ma_mult', 1.2)                    # Volume breakout multiplier
     rsi_period = kwargs.get('rsi_period', 14)                       # RSI indicator period
     rsi_low = kwargs.get('rsi_low', 30)                             # RSI oversold boundary for shorts
@@ -55,6 +57,7 @@ def generate_signals(df, **kwargs):
     df['ATR'] = calculate_atr(df, period=14)
     df['RSI'] = calculate_rsi(df['close'], period=rsi_period)
     df['vol_ma'] = df['tick_volume'].rolling(20).mean()
+    df['ema_trend'] = df['close'].ewm(span=trend_filter_period, adjust=False).mean()
 
     # --- Calculate Opening Range High / Low ---
     # NYSE opens at 9:30 AM EST (570 minutes from midnight)
@@ -80,6 +83,7 @@ def generate_signals(df, **kwargs):
     df['vol_ma_prev'] = df['vol_ma'].shift(1)
     df['RSI_prev'] = df['RSI'].shift(1)
     df['ATR_prev'] = df['ATR'].shift(1)
+    df['ema_trend_prev'] = df['ema_trend'].shift(1)
 
     # Entry window: starts immediately after opening range ends, and ends at 12:00 PM (720 minutes)
     in_entry_window = (df['minutes_ny'] >= orb_end_m) & (df['minutes_ny'] < 720)
@@ -102,15 +106,23 @@ def generate_signals(df, **kwargs):
         rsi_bull_filter = True
         rsi_bear_filter = True
 
-    # Generate Breakout Conditions
-    buy_trigger = (df['close_prev'] > df['orb_high']) & (df['close_prev_prev'] <= df['orb_high']) & in_entry_window & v_filter & vol_filter & rsi_bull_filter
-    sell_trigger = (df['close_prev'] < df['orb_low']) & (df['close_prev_prev'] >= df['orb_low']) & in_entry_window & v_filter & vol_filter & rsi_bear_filter
+    # Filter 4: Trend Filter
+    if use_trend_filter:
+        trend_bull = df['close_prev'] > df['ema_trend_prev']
+        trend_bear = df['close_prev'] < df['ema_trend_prev']
+    else:
+        trend_bull = True
+        trend_bear = True
 
+    # Generate Breakout Conditions
+    buy_trigger = (df['close_prev'] > df['orb_high']) & (df['close_prev_prev'] <= df['orb_high']) & in_entry_window & v_filter & vol_filter & rsi_bull_filter & trend_bull
+    sell_trigger = (df['close_prev'] < df['orb_low']) & (df['close_prev_prev'] >= df['orb_low']) & in_entry_window & v_filter & vol_filter & rsi_bear_filter & trend_bear
 
     # Map triggers to raw signals
     df['raw_signal'] = 0
     df.loc[buy_trigger, 'raw_signal'] = 1
     df.loc[sell_trigger, 'raw_signal'] = -1
+
 
     # Keep only the FIRST signal of each day (prevent overtrading)
     df['has_signal'] = df['raw_signal'] != 0

@@ -13,7 +13,8 @@ from dotenv import load_dotenv
 # ------------------------------------------------------------------------------
 # The load_dotenv() function securely loads your MT5 login credentials from 
 # the 'credentials.env' file so they aren't hardcoded in plaintext.
-load_dotenv()
+load_dotenv('credentials.env')
+
 
 _mt5_login_env = os.getenv("MT5_LOGIN")
 MT5_LOGIN = int(_mt5_login_env) if _mt5_login_env else None
@@ -142,13 +143,17 @@ GRID_NYSE_ORB = {
     'max_atr_mult': [2.0, 3.0],
     'use_volume_filter': [True],
     'use_rsi_filter': [True],
+    'use_trend_filter': [True],
     'vol_ma_mult': [1.0, 1.1],
     'rsi_low': [25, 30],
     'rsi_high': [70, 75],
     'sl_type': ['atr', 'range'],
-    'atr_sl_mult': [1.5],
-    'rr_ratio': [1.5, 2.0, 2.5]
+    'atr_sl_mult': [1.5, 2.0, 2.5],
+    'rr_ratio': [2.0, 2.5, 3.0]
 }
+
+
+
 
 
 

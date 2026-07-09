@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Lessons_Learned/nyse_orb.md",
+                "file": "Backtest_Logs/nyse_orb_v1.0_2026-07-09_18-23.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "nyse_orb"
+              "title": "nyse_orb_v1.0_2026-07-09_18-23"
             }
           }
         ]
@@ -185,8 +185,12 @@
   },
   "active": "d0b8a8b66bdbb9ab",
   "lastOpenFiles": [
+    "Lessons_Learned/nyse_orb_long_term.md",
+    "Backtest_Logs/nyse_orb_v1.0_2026-07-09_18-22.md",
+    "Agent_Dashboard.md",
     "Lessons_Learned/nyse_orb_robustness.md",
     "Lessons_Learned/mean_reversion.md",
+    "Lessons_Learned/nyse_orb.md",
     "Backtest_Logs/mean_reversion_executions.png",
     "Backtest_Logs/mean-reversion_executions.png",
     "Backtest_Logs/mean-reversion_v2.0_2099-01-01_12-00.md",
@@ -216,10 +220,6 @@
     "Backtest_Logs/backup_temp/mean-reversion_executions.png",
     "Backtest_Logs/mean_reversion_v2.0_2026-06-30_15-32.md",
     "Backtest_Logs/backup_temp/mean_reversion_v2.0_2026-06-30_15-32.md",
-    "Backtest_Logs/backup_temp/mean_reversion_v2.0_2026-06-30_15-31.md",
-    "Backtest_Logs/mean_reversion_v2.0_2026-06-30_15-31.md",
-    "Backtest_Logs/backup_temp/mean_reversion_v2.0_2026-06-30_14-08.md",
-    "Backtest_Logs/backup_temp/mean_reversion_backtest_20260630_121532.md",
     "Agent_Dashboard.md.txt",
     "New Text Document.txt"
   ]
