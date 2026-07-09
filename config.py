@@ -62,7 +62,9 @@ MAGIC_NUMBER = 999111
 # - "supertrend"
 # - "tick_vwap"
 # - "zscore_momentum"
-ACTIVE_STRATEGY = "mean_reversion"
+# - "nyse_orb"
+ACTIVE_STRATEGY = "nyse_orb"
+
 
 
 # ------------------------------------------------------------------------------
@@ -133,3 +135,20 @@ GRID_SUPERTREND = {
     'atr_multiplier': [2.0, 3.0, 4.0],
     'rr_ratio': [2.0, 3.0, 5.0]
 }
+
+GRID_NYSE_ORB = {
+    'orb_lookback_minutes': [15, 30],
+    'min_atr_mult': [0.3, 0.5],
+    'max_atr_mult': [2.0, 3.0],
+    'use_volume_filter': [True],
+    'use_rsi_filter': [True],
+    'vol_ma_mult': [1.0, 1.1],
+    'rsi_low': [25, 30],
+    'rsi_high': [70, 75],
+    'sl_type': ['atr', 'range'],
+    'atr_sl_mult': [1.5],
+    'rr_ratio': [1.5, 2.0, 2.5]
+}
+
+
+

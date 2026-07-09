@@ -83,6 +83,21 @@ def run_trading_loop():
                 time.sleep(60)
                 continue
 
+            # 1b. End of Day Square-off for NYSE ORB Strategy (at or after 3:45 PM America/New_York)
+            if config.ACTIVE_STRATEGY == "nyse_orb":
+                from utils.time_sync import NEW_YORK_TZ
+                import pytz
+                from datetime import datetime
+                ny_now = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(NEW_YORK_TZ)
+                if (ny_now.hour == 15 and ny_now.minute >= 45) or (ny_now.hour > 15):
+                    print("NYSE ORB Strategy: End-of-day square-off window active. Closing all positions and pausing.")
+                    open_trades = get_open_positions(config.SYMBOL)
+                    for trade in open_trades:
+                        print(f"EOD Closure: Closing position {trade.ticket}")
+                        close_position(trade.ticket)
+                    time.sleep(60)
+                    continue
+
             # 2. Fetch recent historical data
             required_bars = getattr(config, 'STRATEGY_SLOW_PERIOD', 200) + 10
             df = get_historical_bars(config.SYMBOL, config.TIMEFRAME, required_bars)

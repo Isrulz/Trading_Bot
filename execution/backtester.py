@@ -77,6 +77,7 @@ class BacktestEngine:
         signal_arr = df_signals['signal'].to_numpy() if 'signal' in df_signals.columns else np.zeros(len(df_signals))
         sl_points_arr = df_signals['dynamic_sl_points'].to_numpy() if 'dynamic_sl_points' in df_signals.columns else np.zeros(len(df_signals))
         tp_points_arr = df_signals['dynamic_tp_points'].to_numpy() if 'dynamic_tp_points' in df_signals.columns else np.zeros(len(df_signals))
+        exit_now_arr = df_signals['exit_now'].to_numpy() if 'exit_now' in df_signals.columns else np.zeros(len(df_signals), dtype=bool)
         
         is_mocked = hasattr(get_open_positions, '_mock_self') or hasattr(get_open_positions, 'call_count')
         if not is_mocked:
@@ -87,6 +88,7 @@ class BacktestEngine:
         for i in range(len(df_signals)):
             signal = signal_arr[i]
             sl_points = sl_points_arr[i]
+            exit_now = exit_now_arr[i]
             if sl_points <= 0: 
                 sl_points = getattr(config, "STOP_LOSS_POINTS", 150)
                 
@@ -118,10 +120,10 @@ class BacktestEngine:
                     elif trade.tp > 0 and high_arr[i] >= trade.tp:
                         hit_tp = True
                         exit_price = trade.tp
-                    elif signal == -1:
+                    elif signal == -1 or exit_now:
                         exit_price = price
                         
-                    if hit_sl or hit_tp or signal == -1:
+                    if hit_sl or hit_tp or signal == -1 or exit_now:
                         points_gained = (exit_price - trade.price_open) / point_size
                         points_gained -= (slippage_points * 2) # Slippage on entry and exit
                         profit = points_gained * trade.volume # 1 point = $1 per lot standard assumption
@@ -143,10 +145,10 @@ class BacktestEngine:
                     elif trade.tp > 0 and low_arr[i] <= trade.tp:
                         hit_tp = True
                         exit_price = trade.tp
-                    elif signal == 1:
+                    elif signal == 1 or exit_now:
                         exit_price = price
                         
-                    if hit_sl or hit_tp or signal == 1:
+                    if hit_sl or hit_tp or signal == 1 or exit_now:
                         points_gained = (trade.price_open - exit_price) / point_size
                         points_gained -= (slippage_points * 2) # Slippage on entry and exit
                         profit = points_gained * trade.volume
@@ -175,23 +177,23 @@ class BacktestEngine:
                     })
                     
                     if profit > 0: 
-                        wins += 1
-                        consecutive_wins += 1
-                        consecutive_losses = 0
-                        if consecutive_wins > max_consecutive_wins:
-                            max_consecutive_wins = consecutive_wins
+                      wins += 1
+                      consecutive_wins += 1
+                      consecutive_losses = 0
+                      if consecutive_wins > max_consecutive_wins:
+                          max_consecutive_wins = consecutive_wins
                     else: 
-                        losses += 1
-                        consecutive_losses += 1
-                        consecutive_wins = 0
-                        if consecutive_losses > max_consecutive_losses:
-                            max_consecutive_losses = consecutive_losses
+                      losses += 1
+                      consecutive_losses += 1
+                      consecutive_wins = 0
+                      if consecutive_losses > max_consecutive_losses:
+                          max_consecutive_losses = consecutive_losses
                     
                     equity_curve.append(balance)
                     time_stamps.append(current_time)
                     
             # 2. Evaluate Entry Conditions
-            if signal != 0:
+            if signal != 0 and not exit_now:
                 tp_points = tp_points_arr[i]
                 lots = calculate_position_size(
                     getattr(config, "SYMBOL", "XAUUSD"), 
@@ -208,6 +210,7 @@ class BacktestEngine:
                             success = execute_trade(getattr(config, "SYMBOL", "XAUUSD"), mt5.ORDER_TYPE_BUY, lots, price, price - sl_points*point_size, tp_price, getattr(config, "MAGIC_NUMBER", 999111), open_idx=i)
                         else:
                             success = execute_trade(getattr(config, "SYMBOL", "XAUUSD"), mt5.ORDER_TYPE_BUY, lots, price, price - sl_points*point_size, tp_price, getattr(config, "MAGIC_NUMBER", 999111), open_idx=i, verbose=False)
+
                         if success:
                             if not is_mocked:
                                 open_trades = get_open_positions(getattr(config, "SYMBOL", "XAUUSD"))
@@ -397,9 +400,24 @@ class BacktestEngine:
             else:
                 score = metrics['sharpe'] # Fallback: purely optimize for Sharpe (Consistency and Win Rate)
             
+            # Enforce trade frequency constraint: at least 1 trade every 3 days
+            if len(self.df_train) > 1 and 'time' in self.df_train.columns:
+                try:
+                    time_diff = pd.to_datetime(self.df_train['time'].iloc[-1]) - pd.to_datetime(self.df_train['time'].iloc[0])
+                    num_days = max(1.0, time_diff.total_seconds() / 86400.0)
+                except Exception:
+                    num_days = len(self.df_train) / 96.0
+            else:
+                num_days = len(self.df_train) / 96.0
+                
+            min_trades = num_days / 3.0
+            if metrics['total_trades'] < min_trades:
+                score -= 10000.0  # Heavy penalty for under-trading
+                
             if score > best_score and metrics['total_trades'] > 0:
                 best_score = score
                 best_params = params
+
                 
         if not best_params and permutations:
             best_params = dict(zip(keys, permutations[0]))
