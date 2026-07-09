@@ -10,8 +10,10 @@ from data.ingestion import get_historical_bars, get_latest_tick
 def test_get_historical_bars(mock_copy_rates):
     # 1. Define the fake data the Mock will return
     # This mimics the exact raw C-style tuple MT5 provides (time, open, high, low, close, tick_volume)
-    mock_copy_rates.return_value = (
-        (1717804800, 2300.50, 2305.00, 2299.00, 2304.20, 1000),
+    import numpy as np
+    mock_copy_rates.return_value = np.array(
+        [(1717804800, 2300.50, 2305.00, 2299.00, 2304.20, 1000)],
+        dtype=[('time', '<i8'), ('open', '<f8'), ('high', '<f8'), ('low', '<f8'), ('close', '<f8'), ('tick_volume', '<i8')]
     )
     
     # 2. Execute the function
@@ -50,3 +52,27 @@ def test_get_latest_tick(mock_symbol_info_tick):
     
     # Verify the spread calculation logic is accurate (Ask - Bid)
     assert result['spread'] == 0.50, "Spread calculation is mathematically incorrect"
+
+
+@patch('data.ingestion.load_historical_data')
+@patch('os.path.exists')
+def test_get_auto_cached_historical_data_sorting(mock_exists, mock_load):
+    mock_exists.return_value = True
+    
+    # Create a time-reversed dataframe
+    reversed_df = pd.DataFrame({
+        'time': [pd.Timestamp("2026-01-03"), pd.Timestamp("2026-01-02"), pd.Timestamp("2026-01-01")],
+        'value': [3, 2, 1]
+    })
+    mock_load.return_value = reversed_df
+    
+    from data.ingestion import get_auto_cached_historical_data
+    df = get_auto_cached_historical_data("XAUUSD", 15, 3, "dummy.csv")
+    
+    assert df is not None
+    assert df['time'].iloc[0] == pd.Timestamp("2026-01-01")
+    assert df['time'].iloc[1] == pd.Timestamp("2026-01-02")
+    assert df['time'].iloc[2] == pd.Timestamp("2026-01-03")
+    assert df['value'].iloc[0] == 1
+    assert df['value'].iloc[1] == 2
+    assert df['value'].iloc[2] == 3

@@ -33,7 +33,7 @@ MODE = os.getenv("MODE", "BACKTEST")
 # 2. GLOBAL TRADING PARAMETERS
 # ------------------------------------------------------------------------------
 # SYMBOL: The financial asset you want to trade (e.g., "XAUUSD", "EURUSD").
-SYMBOL = "XAUUSD"
+SYMBOL = "GBPJPY"
 
 # TIMEFRAME: The chart timeframe you are trading on.
 # Common MT5 integer values:
@@ -41,7 +41,7 @@ SYMBOL = "XAUUSD"
 # 5 = M5 (5 Minutes)
 # 15 = M15 (15 Minutes)
 # 16385 = H1 (1 Hour)
-TIMEFRAME = 16385 
+TIMEFRAME = 15 
 
 # RISK_PERCENT: What percentage of your account balance you want to risk per trade.
 # Example: 1.0 means you will lose exactly 1% of your account if the Stop Loss hits.
@@ -58,10 +58,11 @@ MAGIC_NUMBER = 999111
 # ACTIVE_STRATEGY: Which strategy script the bot should use to find trades.
 # Available options out-of-the-box:
 # - "mean_reversion"
-# - "session_breakout"
-# - "volatility_trend"
-# - "moving_avg"
-ACTIVE_STRATEGY = "volatility_trend"
+# - "pa_breakout"
+# - "supertrend"
+# - "tick_vwap"
+# - "zscore_momentum"
+ACTIVE_STRATEGY = "mean_reversion"
 
 
 # ------------------------------------------------------------------------------
@@ -74,9 +75,12 @@ BACKTEST_INITIAL_BALANCE = 10000.0
 BACKTEST_DATA_FILE = "historical_data.csv"
 
 # TRAIN_SPLIT_RATIO: The percentage of data used for In-Sample Optimization vs Out-of-Sample.
-# 0.70 means 70% of the timeline is used to find the best parameters, and 
-# the remaining 30% is a "blind test" to verify those parameters actually work.
-TRAIN_SPLIT_RATIO = 0.70
+# 0.60 means 60% of the timeline is used to find the best parameters, and 
+# TEST_SPLIT_RATIO defines the validation window size.
+TRAIN_SPLIT_RATIO = 0.6  # 60% of data used for training/optimisation
+TEST_SPLIT_RATIO = 0.4   # 40% of data used for blind Out-Of-Sample validation (increased from 30%)
+# SLIPPAGE_POINTS: Frictional cost deducted from every trade (in points).
+SLIPPAGE_POINTS = 20
 
 
 # ------------------------------------------------------------------------------
@@ -97,23 +101,35 @@ ASIC_LEVERAGE_GOLD = 20
 
 GRID_MEAN_REVERSION = {
     'bb_period': [20, 50],
-    'bb_std': [2.0, 2.5],
-    'rsi_period': [14, 21],
+    'bb_std': [1.5, 2.0],
+    'rsi_period': [14],
     'rsi_overbought': [70, 75],
-    'rsi_oversold': [30, 25]
+    'rsi_oversold': [30, 25],
+    'rr_ratio': [0.2, 0.3, 0.5, 1.0, 1.5, 2.0, 3.0], 
+    'atr_sl_mult': [1.0, 1.5, 2.0]
 }
 
-GRID_SESSION_BREAKOUT = {
-    'asian_session_end': [8], # Time in UTC when the Asian session transitions.
-    'breakout_buffer_points': [10, 20],
-    'volume_ma_period': [10, 20],
-    'volume_factor': [1.0, 1.5]
+GRID_PA_BREAKOUT = {
+    'rsi_period': [14],
+    'rsi_extreme': [35, 40], # RSI must be exhausted when breaking the daily level
+    'lookback_days': [1, 2]
 }
 
-GRID_VOLATILITY_TREND = {
-    'atr_period': [10, 14],
-    'keltner_mult': [1.5, 2.0],
-    'macd_fast': [12],
-    'macd_slow': [26],
-    'macd_signal': [9]
+GRID_TICK_VWAP = {
+    'vwap_period': [24, 48], 
+    'dev_mult': [1.5, 2.0], 
+    'rsi_filter': [60, 65] # Loosened from 70/80 to get more trades
+}
+
+GRID_ZSCORE_MOMENTUM = {
+    'z_period': [20, 50],
+    'z_entry': [1.5, 2.0], # Fade the extreme deviations
+    'rr_ratio': [0.2, 0.3, 0.5, 1.0, 1.5, 2.0, 3.0],
+    'atr_sl_mult': [1.0, 1.5, 2.0]
+}
+
+GRID_SUPERTREND = {
+    'atr_period': [10, 14, 20],
+    'atr_multiplier': [2.0, 3.0, 4.0],
+    'rr_ratio': [2.0, 3.0, 5.0]
 }

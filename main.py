@@ -63,18 +63,12 @@ def run_trading_loop():
     print(f"Starting LIVE Execution with Strategy: {config.ACTIVE_STRATEGY}")
     
     # Load the requested strategy dynamically based on config.py
-    if config.ACTIVE_STRATEGY == "mean_reversion":
-        from strategies.mean_reversion import check_for_signals
-    elif config.ACTIVE_STRATEGY == "session_breakout":
-        from strategies.session_breakout import check_for_signals
-    elif config.ACTIVE_STRATEGY == "volatility_trend":
-        from strategies.volatility_trend import check_for_signals
-    elif config.ACTIVE_STRATEGY == "moving_avg":
-        from strategies.moving_avg import check_for_signals
-    elif config.ACTIVE_STRATEGY == "day_trading":
-        from strategies.day_trading import check_for_signals
-    else:
-        print(f"CRITICAL: Unknown strategy selected ({config.ACTIVE_STRATEGY}).")
+    import importlib
+    try:
+        strategy_module = importlib.import_module(f"strategies.{config.ACTIVE_STRATEGY}")
+        check_for_signals = strategy_module.check_for_signals
+    except (ImportError, AttributeError) as e:
+        print(f"CRITICAL: Failed to load strategy module/function for '{config.ACTIVE_STRATEGY}': {e}")
         return
 
     # Infinite Loop
@@ -104,7 +98,7 @@ def run_trading_loop():
             has_short = any(t.type == mt5.POSITION_TYPE_SELL for t in open_trades)
 
             # 4. Ask the strategy if we should enter or exit
-            signal, strategy_sl_points = check_for_signals(df)
+            signal, strategy_sl_points, strategy_tp_points = check_for_signals(df)
 
             # 5. Handle Exits
             for trade in open_trades:
@@ -124,6 +118,7 @@ def run_trading_loop():
                 
                 if tick and account_info:
                     sl_points = strategy_sl_points if strategy_sl_points > 0 else config.STOP_LOSS_POINTS
+                    tp_points = strategy_tp_points if strategy_tp_points > 0 else (sl_points * 2)
                     
                     # Risk engine calculates the exact lot size we need to hit our RISK_PERCENT
                     calculated_lots = calculate_position_size(
@@ -137,13 +132,13 @@ def run_trading_loop():
                     if signal == 1 and not has_long:
                         print(f"Execution Strategy: Triggering LONG Trade. Lots: {calculated_lots}")
                         sl_price = tick['ask'] - (sl_points * mt5.symbol_info(config.SYMBOL).point)
-                        tp_price = tick['ask'] + (sl_points * 2 * mt5.symbol_info(config.SYMBOL).point)
+                        tp_price = tick['ask'] + (tp_points * mt5.symbol_info(config.SYMBOL).point)
                         execute_trade(config.SYMBOL, mt5.ORDER_TYPE_BUY, calculated_lots, tick['ask'], sl_price, tp_price, config.MAGIC_NUMBER)
                         
                     elif signal == -1 and not has_short:
                         print(f"Execution Strategy: Triggering SHORT Trade. Lots: {calculated_lots}")
                         sl_price = tick['bid'] + (sl_points * mt5.symbol_info(config.SYMBOL).point)
-                        tp_price = tick['bid'] - (sl_points * 2 * mt5.symbol_info(config.SYMBOL).point)
+                        tp_price = tick['bid'] - (tp_points * mt5.symbol_info(config.SYMBOL).point)
                         execute_trade(config.SYMBOL, mt5.ORDER_TYPE_SELL, calculated_lots, tick['bid'], sl_price, tp_price, config.MAGIC_NUMBER)
             
             # 7. Sleep before scanning again

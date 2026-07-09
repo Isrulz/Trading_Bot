@@ -93,9 +93,10 @@ def get_auto_cached_historical_data(symbol, timeframe, num_bars, filename):
     If no, connects to MT5, downloads the data, saves it, and then loads it.
     """
     import os
+    df = None
     if os.path.exists(filename):
         print(f"Auto-Cache Hit: Found local dataset '{filename}'. Bypassing MT5 API.")
-        return load_historical_data(filename)
+        df = load_historical_data(filename)
     else:
         print(f"Auto-Cache Miss: '{filename}' not found. Fetching from MT5...")
         # Ensure connection
@@ -105,5 +106,8 @@ def get_auto_cached_historical_data(symbol, timeframe, num_bars, filename):
         
         success = download_and_save_historical_data(symbol, timeframe, num_bars, filename)
         if success:
-            return load_historical_data(filename)
-        return None
+            df = load_historical_data(filename)
+            
+    if df is not None:
+        df = df.sort_values(by='time').reset_index(drop=True)
+    return df
